@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Landing Page</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <script>
         function goToCrazy() {
             localStorage.setItem('userInteracted', 'true');
             localStorage.setItem('autoplayRequested', 'true');
-            location.href = '/crazy';
+            window.history.pushState({page: 'crazy'}, '', '/');
+            window.location.href = '/crazy';
         }
     </script>
 </head>

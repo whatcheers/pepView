@@ -8,6 +8,16 @@ class CrazyPage {
         this.init();
         this.setupSparkles();
         this.setupResizeHandler();
+        
+        // Handle browser history
+        window.history.replaceState({page: 'crazy'}, '', '/');
+        
+        // Handle back button
+        window.addEventListener('popstate', (event) => {
+            if (!event.state || event.state.page !== 'crazy') {
+                window.location.href = '/';
+            }
+        });
     }
 
     setupResizeHandler() {
