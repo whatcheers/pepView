@@ -220,3 +220,35 @@ body {
     margin: 5px;
     padding: 15px 25px;
 }
+
+.buy-button {
+    display: inline-block;
+    padding: 15px 30px;
+    background: linear-gradient(45deg, #ff00ff, #00ffff);
+    color: white;
+    text-decoration: none;
+    border-radius: 25px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 20px;
+    position: relative;
+    z-index: 1000;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Mobile optimization for the buy button */
+@media (max-width: 768px) {
+    .buy-button {
+        font-size: 1.2rem;
+        padding: 12px 24px;
+        margin: 10px;
+    }
+}
