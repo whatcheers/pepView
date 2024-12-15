@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ff00ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>BUY $Pep NOT $Pepe - SUPER ZANY EDITION</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script>
+    const AUDIO_URL = "{{ url_for('serve_audio', filename='song.mp3') }}";
+  </script>
+</head>
+<body class="crazy-body">
+  <h1 class="crazy-title">
+    <span style="color: #ff0000;">🎉</span>
+    <span style="color: #00ff00;">BUY</span>
+    <span style="color: #ffff00;">$Pep</span>
+    <span style="color: #00ffff;">NOT</span>
+    <span style="color: #ff00ff;">$Pepe!!!</span>
+    <span style="color: #ff0000;">🎉</span>
+  </h1>
+  <div class="image-container" id="random-image-container"></div>
+
+  <script src="{{ url_for('static', filename='js/crazy.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const page = new CrazyPage();
+    });
+  </script>
+</body>
+</html>

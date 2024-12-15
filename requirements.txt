@@ -1,0 +1,2 @@
+Flask==2.3.3
+howler  # (Note: howler.js is a client-side library, but left here as reference

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Landing Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+        function goToCrazy() {
+            localStorage.setItem('userInteracted', 'true');
+            localStorage.setItem('autoplayRequested', 'true');
+            location.href = '/crazy';
+        }
+    </script>
+</head>
+<body class="landing-body">
+    <h1>Sell Pep?</h1>
+    <div class="button-container">
+        <button class="landing-button" onclick="goToCrazy()">Yes</button>
+        <button class="landing-button" onclick="goToCrazy()">No</button>
+    </div>
+</body>
+</html> 
