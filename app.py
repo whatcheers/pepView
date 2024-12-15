@@ -66,5 +66,5 @@ def add_header(response):
     return response
 
 if __name__ == '__main__':
-    # Launch the Flask dev server on port 5001
-    app.run(debug=True, port=5001)
+    # Only use debug mode when developing locally
+    app.run(host='127.0.0.1', port=5001)
