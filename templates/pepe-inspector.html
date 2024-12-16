@@ -8,22 +8,19 @@
 </head>
 <body>
     <div class="container">
-        <div class="card">
-            <div class="header">
-                <img src="{{ url_for('static', filename='images/pepeint.png') }}" alt="Pepe Inspector Logo" class="logo">
-                <h1 class="title">Pepe Market Intelligence Suite</h1>
-            </div>
+        <div class="header">
+            <h1>PEPE MARKET INTELLIGENCE SUITE</h1>
+        </div>
+        
+        <select id="pepeSelect" class="select">
+            <option value="">SELECT PEPE ASSET ▼</option>
+            {% for pepe in pepes %}
+                <option value="{{ pepe.id }}">{{ pepe.name }} ({{ pepe.symbol|upper }})</option>
+            {% endfor %}
+        </select>
 
-            <select id="pepeSelect" class="select">
-                <option value="">SELECT PEPE ASSET ▼</option>
-                {% for pepe in pepes %}
-                    <option value="{{ pepe.id }}">{{ pepe.id }}</option>
-                {% endfor %}
-            </select>
-
-            <div id="pepeData" class="grid">
-                <!-- Data populated by JS -->
-            </div>
+        <div id="pepeData">
+            <!-- Data populated by JS -->
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/pepe-inspector.js') }}"></script>

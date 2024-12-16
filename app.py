@@ -117,22 +117,18 @@ def ratelimit_handler(e):
 
 @app.route('/pepe-inspector')
 def pepe_inspector():
-    # Load the JSON file with all Pepe coins
     try:
-        with open('static/data/pepe_coins.json', 'r') as f:
-            pepes = json.loads(f.read())
-        formatted_pepes = [{'id': pepe_id} for pepe_id in pepes]
-        return render_template('pepe-inspector.html', pepes=formatted_pepes)
+        # Load Pepe coins from JSON file
+        with open('data/pepe_coins.json', 'r') as f:
+            pepe_coins = json.load(f)
+        return render_template('pepe-inspector.html', pepes=pepe_coins)
     except Exception as e:
-        import traceback
         print(f"Error loading Pepe coins: {e}")
-        print(traceback.format_exc())
         return render_template('pepe-inspector.html', pepes=[])
 
 @app.route('/api/pepe-info/<pepe_id>')
 @limiter.limit("30 per minute")
 def get_pepe_info(pepe_id):
-    """Fetch and return Pepe coin information from CoinGecko"""
     try:
         url = f'https://api.coingecko.com/api/v3/coins/{pepe_id}'
         headers = {
@@ -140,8 +136,7 @@ def get_pepe_info(pepe_id):
             'x-cg-demo-api-key': 'CG-coYwgfJ1r2wHMS7ma7zBsZ5b'
         }
         response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            return jsonify({'error': 'Failed to fetch data from CoinGecko'}), response.status_code
+        response.raise_for_status()
         return jsonify(response.json())
     except Exception as e:
         return jsonify({'error': str(e)}), 500
