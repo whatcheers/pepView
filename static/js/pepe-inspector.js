@@ -39,13 +39,11 @@ class PepeInspector {
     }
 
     displayPepeData(data) {
-        // Update header with coin name and symbol
         document.querySelector('.header').innerHTML = `
             <div class="coin-info">
-                <div class="coin-logo-container">
-                    <div class="logo-label">${data.name.toUpperCase()} LOGO</div>
-                    <img src="${data.image?.large}" alt="${data.name} logo" class="coin-logo">
-                </div>
+                <img src="${data.image?.local_path || data.image?.large}" 
+                     alt="${data.name} logo" 
+                     class="coin-logo">
                 <div class="coin-title">
                     <div class="coin-name">${data.name}</div>
                     <div class="coin-symbol">${data.symbol?.toUpperCase()}</div>

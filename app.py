@@ -7,6 +7,7 @@ from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 import requests
 import json
+from urllib.parse import urlparse
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +26,39 @@ limiter = Limiter(
 
 # Add proper MIME type for MP3
 mimetypes.add_type('audio/mpeg', '.mp3')
+
+# Add this function to handle logo downloads
+def download_coin_logo(image_url, coin_id):
+    if not image_url:
+        return None
+        
+    # Create images directory if it doesn't exist
+    image_dir = os.path.join('static', 'images', 'coins')
+    os.makedirs(image_dir, exist_ok=True)
+    
+    # Remove URL parameters and get clean extension
+    clean_url = image_url.split('?')[0]
+    ext = os.path.splitext(clean_url)[1]
+    if not ext:
+        ext = '.png'
+    
+    filename = f"{coin_id}{ext}"
+    image_path = os.path.join(image_dir, filename)
+    
+    # Only download if we don't have it already
+    if not os.path.exists(image_path):
+        try:
+            response = requests.get(image_url)
+            if response.status_code == 200:
+                with open(image_path, 'wb') as f:
+                    f.write(response.content)
+            else:
+                return None
+        except Exception as e:
+            print(f"Error downloading logo for {coin_id}: {e}")
+            return None
+            
+    return f"/static/images/coins/{filename}"
 
 @app.route('/')
 def index():
@@ -126,18 +160,21 @@ def pepe_inspector():
         print(f"Error loading Pepe coins: {e}")
         return render_template('pepe-inspector.html', pepes=[])
 
-@app.route('/api/pepe-info/<pepe_id>')
+@app.route('/api/pepe-info/<coin_id>')
 @limiter.limit("30 per minute")
-def get_pepe_info(pepe_id):
+def get_pepe_info(coin_id):
     try:
-        url = f'https://api.coingecko.com/api/v3/coins/{pepe_id}'
-        headers = {
-            'accept': 'application/json',
-            'x-cg-demo-api-key': 'CG-coYwgfJ1r2wHMS7ma7zBsZ5b'
-        }
-        response = requests.get(url, headers=headers)
+        response = requests.get(f'https://api.coingecko.com/api/v3/coins/{coin_id}')
         response.raise_for_status()
-        return jsonify(response.json())
+        data = response.json()
+        
+        # Download and save the large logo
+        if data.get('image', {}).get('large'):
+            local_path = download_coin_logo(data['image']['large'], coin_id)
+            if local_path:
+                data['image']['local_path'] = local_path
+        
+        return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
