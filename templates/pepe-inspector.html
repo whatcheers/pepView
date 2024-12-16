@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Pepe Market Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/pepeint.png') }}">
+    
+    <!-- Add OpenGraph meta tags for social sharing -->
+    <meta property="og:title" content="Pepe Market Intelligence Suite">
+    <meta property="og:description" content="Professional-grade Pepe coin market analysis and tracking">
+    <meta property="og:image" content="{{ url_for('static', filename='images/pepeint.png', _external=True) }}">
+    <meta property="og:type" content="website">
+    
+    <style nonce="{{ request.csp_nonce }}">
+        /* Any inline styles here */
+    </style>
+</head>
+<body class="inspector-body">
+    <div class="financial-overlay"></div>
+    <div class="market-ticker">
+        <div class="market-ticker-content">
+            ANALYZING MARKET DATA • CALCULATING PEPE METRICS • PROCESSING BLOCKCHAIN STATISTICS • EVALUATING MEME POTENTIAL • 
+        </div>
+    </div>
+    
+    <div class="inspector-container">
+        <div class="inspector-header-container">
+            <img 
+                src="{{ url_for('static', filename='images/pepeint.png') }}" 
+                alt="Pepe Inspector Logo" 
+                class="inspector-logo"
+                data-fallback="true"
+            />
+            <h1 class="inspector-header blink-cursor">Pepe Market Intelligence Suite</h1>
+        </div>
+        <div class="data-box">
+            <div class="select-container">
+                <select id="pepeSelect" class="pepe-select">
+                    <option value="">SELECT PEPE ASSET ▼</option>
+                    {% set current_letter = '' %}
+                    {% set pepes_by_letter = {} %}
+                    
+                    {# First, group all pepes by their first letter #}
+                    {% for pepe in pepes %}
+                        {% set first_letter = pepe.id[0]|upper %}
+                        {% if first_letter not in pepes_by_letter %}
+                            {% set _ = pepes_by_letter.update({first_letter: []}) %}
+                        {% endif %}
+                        {% set _ = pepes_by_letter[first_letter].append(pepe) %}
+                    {% endfor %}
+                    
+                    {# Then output them in groups #}
+                    {% for letter in pepes_by_letter|sort %}
+                        <option disabled class="letter-divider">== {{ letter }} ==</option>
+                        {% for pepe in pepes_by_letter[letter]|sort(attribute='id') %}
+                            <option value="{{ pepe.id }}" data-letter="{{ letter }}">{{ pepe.id }}</option>
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="pepeData" class="pepe-data">
+                <!-- Data will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script nonce="{{ request.csp_nonce }}">
+        const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
+        const pepeSelect = document.getElementById('pepeSelect');
+        const pepeData = document.getElementById('pepeData');
+
+        async function getPepeData(pepeId) {
+            // Check cache first
+            const cachedData = checkCache(pepeId);
+            if (cachedData) {
+                return cachedData;
+            }
+
+            // If not in cache, fetch from API
+            pepeData.innerHTML = '█ FETCHING MARKET DATA...';
+            
+            try {
+                const response = await fetch(`/api/pepe-info/${pepeId}`);
+                const data = await response.json();
+                
+                // Save to cache
+                saveToCache(pepeId, data);
+                
+                return data;
+            } catch (error) {
+                console.error('Error:', error);
+                throw new Error('█ ERROR: MARKET DATA UNAVAILABLE');
+            }
+        }
+
+        function checkCache(pepeId) {
+            const cached = localStorage.getItem(`pepe_${pepeId}`);
+            if (!cached) return null;
+
+            const { timestamp, data } = JSON.parse(cached);
+            
+            // Check if cache is still valid
+            if (Date.now() - timestamp < CACHE_DURATION) {
+                return data;
+            }
+
+            // Cache expired, remove it
+            localStorage.removeItem(`pepe_${pepeId}`);
+            return null;
+        }
+
+        function updateCategoryIndex(pepeId, data) {
+            const categoryIndex = JSON.parse(localStorage.getItem('pepe_categories') || '{}');
+            
+            // Remove this pepe from all categories first (in case categories changed)
+            Object.values(categoryIndex).forEach(pepeList => {
+                const index = pepeList.indexOf(pepeId);
+                if (index > -1) {
+                    pepeList.splice(index, 1);
+                }
+            });
+
+            // Add pepe to each of its categories
+            if (data.categories) {
+                data.categories.forEach(category => {
+                    if (!categoryIndex[category]) {
+                        categoryIndex[category] = [];
+                    }
+                    if (!categoryIndex[category].includes(pepeId)) {
+                        categoryIndex[category].push(pepeId);
+                    }
+                });
+            }
+
+            localStorage.setItem('pepe_categories', JSON.stringify(categoryIndex));
+            return categoryIndex;
+        }
+
+        function saveToCache(pepeId, data) {
+            const cacheData = {
+                timestamp: Date.now(),
+                data: data
+            };
+            
+            try {
+                localStorage.setItem(`pepe_${pepeId}`, JSON.stringify(cacheData));
+                // Update category index
+                updateCategoryIndex(pepeId, data);
+            } catch (e) {
+                clearOldCache();
+                try {
+                    localStorage.setItem(`pepe_${pepeId}`, JSON.stringify(cacheData));
+                    updateCategoryIndex(pepeId, data);
+                } catch (e) {
+                    console.error('Cache storage failed:', e);
+                }
+            }
+        }
+
+        function clearOldCache() {
+            const now = Date.now();
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('pepe_')) {
+                    const cached = JSON.parse(localStorage.getItem(key));
+                    if (now - cached.timestamp > CACHE_DURATION) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            });
+        }
+
+        pepeSelect.addEventListener('change', async () => {
+            const selectedPepe = pepeSelect.value;
+            if (!selectedPepe) return;
+
+            try {
+                const data = await getPepeData(selectedPepe);
+                displayPepeData(data);
+            } catch (error) {
+                pepeData.innerHTML = error.message;
+            }
+        });
+
+        function displayPepeData(data) {
+            const categoryIndex = JSON.parse(localStorage.getItem('pepe_categories') || '{}');
+            
+            const html = `
+                <div class="data-grid">
+                    <div class="data-section">
+                        <div class="section-header">█ ASSET IDENTIFICATION</div>
+                        <div class="asset-header">
+                            <img 
+                                src="${data.image?.thumb || '/static/images/placeholder.png'}" 
+                                alt="${data.name}" 
+                                class="asset-thumb"
+                                onerror="this.src='/static/images/placeholder.png'"
+                            >
+                            <div class="asset-info">
+                                <div class="data-row">
+                                    <span class="label">NAME:</span>
+                                    <span class="value">${data.name}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="label">SYMBOL:</span>
+                                    <span class="value">${data.symbol?.toUpperCase()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ DESCRIPTION</div>
+                        <div class="description-box">
+                            ${data.description?.en || 'No description available'}
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ LINKS</div>
+                        <div class="links-grid">
+                            ${generateLinks(data.links)}
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ MARKET METRICS</div>
+                        <div class="metric-group">
+                            <div class="data-row" data-tooltip="Current trading price in USD across all tracked exchanges">
+                                <span class="label">CURRENT PRICE:</span>
+                                <span class="value blink-value">$${data.market_data?.current_price?.usd || 'N/A'}</span>
+                            </div>
+                            
+                            <div class="data-row" data-tooltip="Total value of all coins in circulation\nCalculated as: Current Price × Circulating Supply">
+                                <span class="label">MARKET CAP:</span>
+                                <span class="value">$${formatNumber(data.market_data?.market_cap?.usd) || 'N/A'}</span>
+                            </div>
+
+                            <div class="data-row" data-tooltip="Total value if maximum supply was in circulation\nUseful for understanding potential dilution">
+                                <span class="label">FULLY DILUTED VAL:</span>
+                                <span class="value">$${formatNumber(data.market_data?.fully_diluted_valuation?.usd) || 'N/A'}</span>
+                            </div>
+
+                            <div class="data-row" data-tooltip="Trading volume in the last 24 hours\nHigher volumes indicate more market activity">
+                                <span class="label">24H VOLUME:</span>
+                                <span class="value">$${formatNumber(data.market_data?.total_volume?.usd) || 'N/A'}</span>
+                            </div>
+
+                            <div class="data-row" data-tooltip="Volume/Market Cap ratio\nHigher percentages suggest more active trading relative to size">
+                                <span class="label">VOL/MCAP RATIO:</span>
+                                <span class="value">${calculateRatio(
+                                    data.market_data?.total_volume?.usd,
+                                    data.market_data?.market_cap?.usd
+                                )}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ PRICE CHANGES</div>
+                        <div class="metric-group">
+                            ${generatePriceChanges(data.market_data)}
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ SOCIAL METRICS</div>
+                        <div class="data-row">
+                            <span class="label">TWITTER FOLLOWERS:</span>
+                            <span class="value">${data.community_data?.twitter_followers || 'N/A'}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">TELEGRAM MEMBERS:</span>
+                            <span class="value">${data.community_data?.telegram_channel_user_count || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ SUPPLY ANALYSIS</div>
+                        <div class="data-row">
+                            <span class="label">MAX SUPPLY:</span>
+                            <span class="value">${data.market_data?.max_supply?.toLocaleString() || 'N/A'}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="label">TOTAL SUPPLY:</span>
+                            <span class="value">${data.market_data?.total_supply?.toLocaleString() || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ CATEGORIES</div>
+                        <div class="data-row">
+                            <div class="category-list">
+                                ${data.categories ? data.categories.map(cat => `
+                                    <div class="category-tag">
+                                        ${cat} (${categoryIndex[cat]?.length || 1})
+                                    </div>
+                                `).join('') : 'N/A'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ RELATED PEPES</div>
+                        <div class="data-row">
+                            <div class="related-pepes">
+                                ${getRelatedPepes(data.id, data.categories)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ MARKET PERFORMANCE</div>
+                        <div class="performance-grid">
+                            <div class="metric-group">
+                                <div class="metric-header">PRICE HISTORY</div>
+                                <div class="data-row" data-tooltip="Highest price ever recorded for this asset.\nImportant for understanding price potential.">
+                                    <span class="label">ALL TIME HIGH:</span>
+                                    <span class="value">$${data.market_data?.ath?.usd?.toFixed(8) || 'N/A'}</span>
+                                </div>
+                                <div class="data-row" data-tooltip="Percentage difference between current price and all-time high.\nIndicates recovery potential or market cycle position.">
+                                    <span class="label">ATH CHANGE:</span>
+                                    <span class="value ${(data.market_data?.ath_change_percentage?.usd || 0) >= 0 ? 'positive' : 'negative'}">
+                                        ${data.market_data?.ath_change_percentage?.usd?.toFixed(2) || 'N/A'}%
+                                    </span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="label">ATH DATE:</span>
+                                    <span class="value">${new Date(data.market_data?.ath_date?.usd).toLocaleDateString() || 'N/A'}</span>
+                                </div>
+                            </div>
+
+                            <div class="metric-group">
+                                <div class="metric-header">MARKET METRICS</div>
+                                <div class="data-row">
+                                    <span class="label">MARKET CAP RANK:</span>
+                                    <span class="value">#${data.market_cap_rank || 'N/A'}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="label">MARKET CAP:</span>
+                                    <span class="value">$${formatNumber(data.market_data?.market_cap?.usd) || 'N/A'}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="label">FULLY DILUTED VAL:</span>
+                                    <span class="value">$${formatNumber(data.market_data?.fully_diluted_valuation?.usd) || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ TRADING METRICS</div>
+                        <div class="trading-grid">
+                            <div class="metric-group">
+                                <div class="metric-header">PRICE CHANGES</div>
+                                ${generatePriceChanges(data.market_data)}
+                            </div>
+                            <div class="metric-group">
+                                <div class="metric-header">VOLUME ANALYSIS</div>
+                                <div class="data-row">
+                                    <span class="label">24H VOLUME:</span>
+                                    <span class="value">$${formatNumber(data.market_data?.total_volume?.usd) || 'N/A'}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="label">VOLUME/MARKET CAP:</span>
+                                    <span class="value">${calculateRatio(
+                                        data.market_data?.total_volume?.usd,
+                                        data.market_data?.market_cap?.usd
+                                    )}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <div class="section-header">█ SUPPLY METRICS</div>
+                        <div class="supply-progress">
+                            ${generateSupplyBars(data.market_data)}
+                        </div>
+                    </div>
+
+                    <!-- Add development metrics if available -->
+                    ${data.developer_data ? generateDevMetrics(data.developer_data) : ''}
+
+                    <!-- Add trading pairs summary -->
+                    ${generateTradingPairs(data.tickers)}
+                </div>
+            `;
+            pepeData.innerHTML = html;
+        }
+
+        function generateLinks(links) {
+            if (!links) return 'No links available';
+
+            const linkSections = [];
+
+            // Homepage links
+            if (links.homepage?.some(url => url)) {
+                linkSections.push(`
+                    <div class="link-section">
+                        <span class="link-label">HOMEPAGE:</span>
+                        <div class="link-list">
+                            ${links.homepage.filter(url => url).map(url => 
+                                `<a href="${url}" target="_blank" rel="noopener noreferrer" class="pepe-link">🌐 ${new URL(url).hostname}</a>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Social links
+            const socialLinks = [];
+            if (links.twitter_screen_name) {
+                socialLinks.push(`<a href="https://twitter.com/${links.twitter_screen_name}" target="_blank" rel="noopener noreferrer" class="pepe-link">🐦 Twitter</a>`);
+            }
+            if (links.telegram_channel_identifier) {
+                socialLinks.push(`<a href="https://t.me/${links.telegram_channel_identifier}" target="_blank" rel="noopener noreferrer" class="pepe-link">📱 Telegram</a>`);
+            }
+            if (links.subreddit_url) {
+                socialLinks.push(`<a href="${links.subreddit_url}" target="_blank" rel="noopener noreferrer" class="pepe-link">📢 Reddit</a>`);
+            }
+            if (links.chat_url?.[0]) {
+                socialLinks.push(`<a href="${links.chat_url[0]}" target="_blank" rel="noopener noreferrer" class="pepe-link">💬 Discord</a>`);
+            }
+
+            if (socialLinks.length) {
+                linkSections.push(`
+                    <div class="link-section">
+                        <span class="link-label">SOCIAL:</span>
+                        <div class="link-list">
+                            ${socialLinks.join('')}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Code repos
+            if (links.repos_url?.github?.length) {
+                linkSections.push(`
+                    <div class="link-section">
+                        <span class="link-label">CODE:</span>
+                        <div class="link-list">
+                            ${links.repos_url.github.map(url => 
+                                `<a href="${url}" target="_blank" rel="noopener noreferrer" class="pepe-link">📦 GitHub</a>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `);
+            }
+
+            return linkSections.join('') || 'No links available';
+        }
+
+        function getRelatedPepes(currentPepeId, categories) {
+            if (!categories) return 'No related Pepes found';
+            
+            const categoryIndex = JSON.parse(localStorage.getItem('pepe_categories') || '{}');
+            const relatedPepes = new Set();
+            
+            // Find pepes that share categories
+            categories.forEach(category => {
+                const pepesInCategory = categoryIndex[category] || [];
+                pepesInCategory.forEach(pepeId => {
+                    if (pepeId !== currentPepeId) {
+                        relatedPepes.add(pepeId);
+                    }
+                });
+            });
+
+            return relatedPepes.size ? 
+                Array.from(relatedPepes)
+                    .slice(0, 5) // Show top 5 related
+                    .map(pepeId => `<span class="related-pepe" onclick="pepeSelect.value='${pepeId}';pepeSelect.dispatchEvent(new Event('change'))">${pepeId}</span>`)
+                    .join(' • ')
+                : 'No related Pepes found';
+        }
+
+        // Helper functions
+        function formatNumber(num) {
+            if (!num) return 'N/A';
+            if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+            return num.toFixed(2);
+        }
+
+        function calculateRatio(a, b) {
+            if (!a || !b) return 'N/A';
+            return ((a / b) * 100).toFixed(2) + '%';
+        }
+
+        function generatePriceChanges(marketData) {
+            const periods = [
+                ['1h', '1 HOUR', 'Price change in the last hour'],
+                ['24h', '24 HOURS', 'Price change in the last 24 hours'],
+                ['7d', '7 DAYS', 'Price change over the last week'],
+                ['30d', '30 DAYS', 'Price change over the last month']
+            ];
+
+            return periods.map(([key, label, tooltip]) => `
+                <div class="data-row" data-tooltip="${tooltip}">
+                    <span class="label">${label}:</span>
+                    <span class="value ${(marketData?.[`price_change_percentage_${key}`] || 0) >= 0 ? 'positive' : 'negative'}">
+                        ${marketData?.[`price_change_percentage_${key}`]?.toFixed(2) || 'N/A'}%
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function generateSupplyBars(marketData) {
+            if (!marketData) return 'No supply data available';
+
+            const maxSupply = marketData.max_supply || 0;
+            const totalSupply = marketData.total_supply || 0;
+            const circulatingSupply = marketData.circulating_supply || 0;
+
+            const getPercentage = (value, max) => {
+                if (!max || !value) return 0;
+                return (value / max * 100).toFixed(2);
+            };
+
+            return `
+                <div class="supply-metric" data-tooltip="Circulating supply compared to maximum supply\nShows current market availability">
+                    <div class="supply-label">
+                        <span>CIRCULATING SUPPLY:</span>
+                        <span>${formatNumber(circulatingSupply)} (${getPercentage(circulatingSupply, maxSupply)}%)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${getPercentage(circulatingSupply, maxSupply)}%"></div>
+                    </div>
+                </div>
+
+                <div class="supply-metric" data-tooltip="Total supply compared to maximum supply\nIndicates total tokens created vs maximum possible">
+                    <div class="supply-label">
+                        <span>TOTAL SUPPLY:</span>
+                        <span>${formatNumber(totalSupply)} (${getPercentage(totalSupply, maxSupply)}%)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${getPercentage(totalSupply, maxSupply)}%"></div>
+                    </div>
+                </div>
+
+                <div class="supply-metric" data-tooltip="Maximum possible supply\nTotal tokens that can ever exist">
+                    <div class="supply-label">
+                        <span>MAX SUPPLY:</span>
+                        <span>${formatNumber(maxSupply)}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateDevMetrics(devData) {
+            if (!devData) return '';
+            
+            return `
+                <div class="data-section">
+                    <div class="section-header">█ DEVELOPMENT METRICS</div>
+                    <div class="metric-group">
+                        <div class="data-row" data-tooltip="Number of repository forks\nIndicates developer interest">
+                            <span class="label">FORKS:</span>
+                            <span class="value">${devData.forks || 'N/A'}</span>
+                        </div>
+                        <div class="data-row" data-tooltip="GitHub stars\nMeasures project popularity">
+                            <span class="label">STARS:</span>
+                            <span class="value">${devData.stars || 'N/A'}</span>
+                        </div>
+                        <div class="data-row" data-tooltip="Total issues opened\nIndicates project activity">
+                            <span class="label">TOTAL ISSUES:</span>
+                            <span class="value">${devData.total_issues || 'N/A'}</span>
+                        </div>
+                        <div class="data-row" data-tooltip="Closed issues\nShows issue resolution rate">
+                            <span class="label">CLOSED ISSUES:</span>
+                            <span class="value">${devData.closed_issues || 'N/A'}</span>
+                        </div>
+                        <div class="data-row" data-tooltip="Pull requests merged\nIndicates active development">
+                            <span class="label">MERGED PRs:</span>
+                            <span class="value">${devData.pull_requests_merged || 'N/A'}</span>
+                        </div>
+                        <div class="data-row" data-tooltip="Commit count in last 4 weeks\nShows recent development activity">
+                            <span class="label">RECENT COMMITS:</span>
+                            <span class="value">${devData.commit_count_4_weeks || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateTradingPairs(tickers) {
+            if (!tickers || !tickers.length) return '';
+
+            // Sort tickers by volume
+            const sortedTickers = tickers
+                .filter(t => t.converted_volume?.usd > 0)
+                .sort((a, b) => (b.converted_volume?.usd || 0) - (a.converted_volume?.usd || 0))
+                .slice(0, 5); // Show top 5 pairs
+
+            if (!sortedTickers.length) return '';
+
+            // Get cached prices for comparison
+            const cachedPrices = JSON.parse(localStorage.getItem('ticker_prices') || '{}');
+            const currentPrices = {};
+
+            const pairsHtml = sortedTickers.map(ticker => {
+                const pairKey = `${ticker.base}/${ticker.target}`;
+                const currentPrice = Number(ticker.converted_last?.usd || 0);
+                const previousPrice = cachedPrices[pairKey] || currentPrice;
+                
+                // Store current price for next comparison
+                currentPrices[pairKey] = currentPrice;
+
+                return `
+                    <div class="data-row" data-tooltip="Exchange: ${ticker.market.name}\nVolume: $${formatNumber(ticker.converted_volume?.usd)}">
+                        <span class="label">${pairKey}:</span>
+                        <span class="value ${currentPrice > previousPrice ? 'positive' : currentPrice < previousPrice ? 'negative' : ''}">
+                            $${currentPrice.toFixed(8)}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+            // Save current prices for next comparison
+            localStorage.setItem('ticker_prices', JSON.stringify(currentPrices));
+
+            return `
+                <div class="data-section">
+                    <div class="section-header">█ TOP TRADING PAIRS</div>
+                    <div class="metric-group">
+                        ${pairsHtml}
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
