@@ -159,6 +159,34 @@ body {
     color: var(--text-secondary);
     font-family: 'Courier New', monospace;
     font-weight: 600;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    flex: 1;
+}
+
+/* Description specific styling */
+.metric[title*="description"] {
+    display: block;
+}
+
+.metric[title*="description"] .label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.metric[title*="description"] .value {
+    display: block;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.6;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    margin-left: 0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
 }
 
 /* States */
@@ -258,10 +286,9 @@ body {
     .section {
         border-radius: 0;
     }
-}
-
-.error {
+}.error {
     color: #ff4d6e;
     text-align: center;
     padding: var(--spacing-unit);
 }
+
