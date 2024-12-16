@@ -252,3 +252,34 @@ body {
         margin: 10px;
     }
 }
+
+.inspector-button {
+    display: inline-block;
+    padding: 15px 30px;
+    background: #000;
+    border: 2px solid #00ff00;
+    color: white;
+    text-decoration: none;
+    border-radius: 25px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 20px;
+    position: relative;
+    z-index: 1000;
+    text-shadow: 0 0 10px #00ff00;
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+    animation: terminalPulse 2s infinite;
+    font-family: monospace;
+}
+
+@keyframes terminalPulse {
+    0% { box-shadow: 0 0 5px #00ff00; }
+    50% { box-shadow: 0 0 20px #00ff00; }
+    100% { box-shadow: 0 0 5px #00ff00; }
+}
+
+.inspector-button:hover {
+    background: #001100;
+    color: #00ff00;
+    border-color: #00ff00;
+}

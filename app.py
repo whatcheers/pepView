@@ -5,6 +5,8 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+import requests
+import json
 
 # Load environment variables
 load_dotenv()
@@ -95,7 +97,7 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self'; media-src 'self'"
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://assets.coingecko.com; media-src 'self'"
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
     
@@ -112,6 +114,37 @@ def internal_error(error):
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return "Rate limit exceeded. Please try again later.", 429
+
+@app.route('/pepe-inspector')
+def pepe_inspector():
+    # Load the JSON file with all Pepe coins
+    try:
+        with open('static/data/pepe_coins.json', 'r') as f:
+            pepes = json.loads(f.read())
+        formatted_pepes = [{'id': pepe_id} for pepe_id in pepes]
+        return render_template('pepe-inspector.html', pepes=formatted_pepes)
+    except Exception as e:
+        import traceback
+        print(f"Error loading Pepe coins: {e}")
+        print(traceback.format_exc())
+        return render_template('pepe-inspector.html', pepes=[])
+
+@app.route('/api/pepe-info/<pepe_id>')
+@limiter.limit("30 per minute")
+def get_pepe_info(pepe_id):
+    """Fetch and return Pepe coin information from CoinGecko"""
+    try:
+        url = f'https://api.coingecko.com/api/v3/coins/{pepe_id}'
+        headers = {
+            'accept': 'application/json',
+            'x-cg-demo-api-key': 'CG-coYwgfJ1r2wHMS7ma7zBsZ5b'
+        }
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            return jsonify({'error': 'Failed to fetch data from CoinGecko'}), response.status_code
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     if os.environ.get('FLASK_ENV') == 'production':
