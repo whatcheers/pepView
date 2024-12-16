@@ -1,10 +1,43 @@
 async function fetchPepeData(coinId) {
     try {
+        // First try to get local data
+        console.log('Checking for local data...');
+        const localResponse = await fetch(`/static/data/coins/${coinId}.json`);
+        
+        if (localResponse.ok) {
+            console.log('Found local data, using it');
+            const data = await localResponse.json();
+            displayPepeData(data);
+            return;
+        }
+
+        console.log('No local data found, making API call...');
         const response = await fetch(`/api/pepe-info/${coinId}`);
         const data = await response.json();
         if (data.error) throw new Error(data.error);
+        
+        console.log('API Response:', response.status);
+        console.log('API Data:', JSON.stringify(data, null, 2));
+        
+        console.log('Saving API response...');
+        const saveResponse = await fetch('/api/save-pepe-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                coinId: coinId,
+                data: data
+            })
+        });
+        
+        const saveResult = await saveResponse.text();
+        console.log('Save Response:', saveResponse.status, saveResult);
+        
         displayPepeData(data);
     } catch (error) {
+        console.error('Full Error:', error);
         document.getElementById('pepeData').innerHTML = `
             <div class="section">
                 <div class="subsection">
@@ -15,18 +48,21 @@ async function fetchPepeData(coinId) {
 }
 
 function displayPepeData(data) {
-    // Clean up description text by properly handling newlines and escaping
     const description = data.description?.en
         ? data.description.en
-            .replace(/\\r\\n/g, '\n')  // Handle double-escaped newlines
-            .replace(/\r\n/g, '\n')    // Handle single-escaped newlines
-            .replace(/\\n/g, '\n')     // Handle escaped newlines
+            .replace(/\\r\\n/g, '\n')
+            .replace(/\r\n/g, '\n')
+            .replace(/\\n/g, '\n')
         : 'No description available';
 
     const content = `
         <div class="section">
             <h2>Overview</h2>
             <div class="subsection">
+                <div class="coin-header">
+                    <img src="/static/images/coins/${data.id}.png" alt="${data.name}" class="coin-icon">
+                    <h3>${data.name} (${data.symbol.toUpperCase()})</h3>
+                </div>
                 <div class="metric" title="Detailed description of the token, its purpose, and key features">
                     <span class="label">Description:</span>
                     <span class="value">${description}</span>

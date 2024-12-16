@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, jsonify, send_file, send_from_directory, request
 import os, random, mimetypes, re
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_wtf.csrf import CSRFProtect
@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 import requests
 import json
 from urllib.parse import urlparse
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
+import sqlite3
+from sqlalchemy import desc
 
 # Load environment variables
 load_dotenv()
@@ -17,7 +21,7 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 csrf = CSRFProtect(app)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Rate limiting
+# Rate limiting with Redis storage
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
@@ -29,7 +33,8 @@ mimetypes.add_type('audio/mpeg', '.mp3')
 
 # Add this function to handle logo downloads
 def download_coin_logo(image_url, coin_id):
-    if not image_url:
+    # Add URL validation
+    if not image_url or not urlparse(image_url).scheme:
         return None
         
     # Create images directory if it doesn't exist
@@ -48,7 +53,7 @@ def download_coin_logo(image_url, coin_id):
     # Only download if we don't have it already
     if not os.path.exists(image_path):
         try:
-            response = requests.get(image_url)
+            response = requests.get(image_url, timeout=10)  # Added timeout
             if response.status_code == 200:
                 with open(image_path, 'wb') as f:
                     f.write(response.content)
@@ -59,6 +64,33 @@ def download_coin_logo(image_url, coin_id):
             return None
             
     return f"/static/images/coins/{filename}"
+
+# Add database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///pepe_data.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Define models
+class PepeCoin(db.Model):
+    id = db.Column(db.String(100), primary_key=True)
+    name = db.Column(db.String(100))
+    symbol = db.Column(db.String(20))
+    market_cap = db.Column(db.Float, default=0)
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+    
+class CoinData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    coin_id = db.Column(db.String(100), index=True)
+    data = db.Column(db.JSON)
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    @staticmethod
+    def get_cached(coin_id, max_age_minutes=1440):
+        """Get cached data if it exists and is fresh"""
+        cached = CoinData.query.filter_by(coin_id=coin_id).first()
+        if cached and datetime.utcnow() - cached.last_updated < timedelta(minutes=max_age_minutes):
+            return cached.data
+        return None
 
 @app.route('/')
 def index():
@@ -152,31 +184,141 @@ def ratelimit_handler(e):
 @app.route('/pepe-inspector')
 def pepe_inspector():
     try:
-        # Load Pepe coins from JSON file
-        with open('data/pepe_coins.json', 'r') as f:
-            pepe_coins = json.load(f)
-        return render_template('pepe-inspector.html', pepes=pepe_coins)
+        # Get coins from database, ordered by market cap
+        pepe_coins = PepeCoin.query.order_by(desc(PepeCoin.market_cap)).all()
+        
+        # If database is empty or data is stale, refresh from API
+        if not pepe_coins or (datetime.utcnow() - pepe_coins[0].last_updated) > timedelta(minutes=1440):
+            with open(os.path.join(app.static_folder, 'data', 'pepe_coins.json'), 'r') as f:
+                pepe_ids = json.load(f)
+                
+            try:
+                response = requests.get('https://api.coingecko.com/api/v3/coins/markets', params={
+                    'vs_currency': 'usd',
+                    'ids': ','.join(pepe_ids),
+                    'order': 'market_cap_desc',
+                    'per_page': 250,
+                    'page': 1,
+                    'sparkline': False
+                }, timeout=10)
+                
+                if response.ok:
+                    market_data = {coin['id']: coin for coin in response.json()}
+                    
+                    # Update database with fresh data
+                    for coin in market_data.values():
+                        db_coin = PepeCoin.query.get(coin['id'])
+                        if not db_coin:
+                            db_coin = PepeCoin(id=coin['id'])
+                        
+                        db_coin.name = coin['name']
+                        db_coin.symbol = coin['symbol']
+                        db_coin.market_cap = coin.get('market_cap', 0)
+                        db_coin.last_updated = datetime.utcnow()
+                        db.session.add(db_coin)
+                    
+                    # Add coins without market data
+                    for id in pepe_ids:
+                        if id not in market_data:
+                            db_coin = PepeCoin.query.get(id)
+                            if not db_coin:
+                                db_coin = PepeCoin(
+                                    id=id,
+                                    name=id.replace('-', ' ').title(),
+                                    symbol=id,
+                                    market_cap=0
+                                )
+                                db.session.add(db_coin)
+                    
+                    db.session.commit()
+                    
+                    # Get fresh list from database
+                    pepe_coins = PepeCoin.query.order_by(desc(PepeCoin.market_cap)).all()
+            
+            except Exception as e:
+                print(f"Error fetching market data: {e}")
+        
+        # Convert to dictionary format expected by template
+        coins_list = [{
+            'id': coin.id,
+            'name': coin.name,
+            'symbol': coin.symbol,
+            'market_cap': coin.market_cap
+        } for coin in pepe_coins]
+        
+        return render_template('pepe-inspector.html', pepes=coins_list)
+        
     except Exception as e:
-        print(f"Error loading Pepe coins: {e}")
+        print(f"Error in pepe_inspector: {e}")
         return render_template('pepe-inspector.html', pepes=[])
 
 @app.route('/api/pepe-info/<coin_id>')
 @limiter.limit("30 per minute")
 def get_pepe_info(coin_id):
     try:
+        # Check cache first
+        cached_data = CoinData.get_cached(coin_id)
+        if cached_data:
+            return jsonify(cached_data)
+        
+        # If no cache, fetch from API
         response = requests.get(f'https://api.coingecko.com/api/v3/coins/{coin_id}')
         response.raise_for_status()
         data = response.json()
         
-        # Download and save the large logo
-        if data.get('image', {}).get('large'):
-            local_path = download_coin_logo(data['image']['large'], coin_id)
-            if local_path:
-                data['image']['local_path'] = local_path
+        # Cache the response
+        coin_data = CoinData(
+            coin_id=coin_id,
+            data=data,
+            last_updated=datetime.utcnow()
+        )
+        db.session.add(coin_data)
+        db.session.commit()
         
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@csrf.exempt  # If you want to exempt this API endpoint from CSRF
+@app.route('/api/save-pepe-data', methods=['POST'])
+def save_pepe_data():
+    try:
+        data = request.json
+        coin_id = data['coinId']
+        
+        # Validate coin_id
+        if not re.match(r'^[a-zA-Z0-9_-]+$', coin_id):
+            return jsonify({'error': 'Invalid coin ID'}), 400
+            
+        # Ensure directories exist
+        os.makedirs(os.path.join(app.static_folder, 'data', 'coins'), exist_ok=True)
+        os.makedirs(os.path.join(app.static_folder, 'images', 'coins'), exist_ok=True)
+        
+        coin_data = data['data']
+        
+        # Save JSON data with safe path joining
+        json_path = os.path.join(app.static_folder, 'data', 'coins', f'{coin_id}.json')
+        with open(json_path, 'w') as f:
+            json.dump(coin_data, f, indent=2)
+            
+        # Download image if it exists
+        if coin_data.get('image', {}).get('large'):
+            image_url = coin_data['image']['large']
+            if urlparse(image_url).scheme:  # Validate URL
+                response = requests.get(image_url, timeout=10)  # Add timeout
+                if response.status_code == 200:
+                    image_path = os.path.join(app.static_folder, 'images', 'coins', f'{coin_id}.png')
+                    with open(image_path, 'wb') as f:
+                        f.write(response.content)
+                    
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        print(f"Error saving data: {e}")
+        return jsonify({'error': str(e)}), 400
+
+# Add this to create tables
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     if os.environ.get('FLASK_ENV') == 'production':
