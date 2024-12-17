@@ -109,11 +109,74 @@ class PepeCoinCategory(db.Model):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
-
-@app.route('/crazy')
-def crazy_page():
-    return render_template('crazy.html')
+    try:
+        # Get coins from database, ordered by market cap
+        pepe_coins = PepeCoin.query.order_by(desc(PepeCoin.market_cap)).all()
+        
+        # If database is empty or data is stale, refresh from API
+        if not pepe_coins or (datetime.utcnow() - pepe_coins[0].last_updated) > timedelta(minutes=1440):
+            with open(os.path.join(app.static_folder, 'data', 'pepe_coins.json'), 'r') as f:
+                pepe_ids = json.load(f)
+                
+            try:
+                response = requests.get('https://api.coingecko.com/api/v3/coins/markets', params={
+                    'vs_currency': 'usd',
+                    'ids': ','.join(pepe_ids),
+                    'order': 'market_cap_desc',
+                    'per_page': 250,
+                    'page': 1,
+                    'sparkline': False
+                }, timeout=10)
+                
+                if response.ok:
+                    market_data = {coin['id']: coin for coin in response.json()}
+                    
+                    # Update database with fresh data
+                    for coin in market_data.values():
+                        db_coin = PepeCoin.query.get(coin['id'])
+                        if not db_coin:
+                            db_coin = PepeCoin(id=coin['id'])
+                        
+                        db_coin.name = coin['name']
+                        db_coin.symbol = coin['symbol']
+                        db_coin.market_cap = coin.get('market_cap', 0)
+                        db_coin.last_updated = datetime.utcnow()
+                        db.session.add(db_coin)
+                    
+                    # Add coins without market data
+                    for id in pepe_ids:
+                        if id not in market_data:
+                            db_coin = PepeCoin.query.get(id)
+                            if not db_coin:
+                                db_coin = PepeCoin(
+                                    id=id,
+                                    name=id.replace('-', ' ').title(),
+                                    symbol=id,
+                                    market_cap=0
+                                )
+                                db.session.add(db_coin)
+                    
+                    db.session.commit()
+                    
+                    # Get fresh list from database
+                    pepe_coins = PepeCoin.query.order_by(desc(PepeCoin.market_cap)).all()
+            
+            except Exception as e:
+                print(f"Error fetching market data: {e}")
+        
+        # Convert to dictionary format expected by template
+        coins_list = [{
+            'id': coin.id,
+            'name': coin.name,
+            'symbol': coin.symbol,
+            'market_cap': coin.market_cap
+        } for coin in pepe_coins]
+        
+        return render_template('index.html', pepes=coins_list)
+        
+    except Exception as e:
+        print(f"Error in index: {e}")
+        return render_template('index.html', pepes=[])
 
 @app.route('/api/random_images')
 @limiter.limit("30 per minute")

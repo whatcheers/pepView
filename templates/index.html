@@ -1,25 +1,85 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Landing Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Pepe Market Intelligence Suite</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='pepe-inspector.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <script>
-        function goToCrazy() {
-            localStorage.setItem('userInteracted', 'true');
-            localStorage.setItem('autoplayRequested', 'true');
-            window.history.pushState({page: 'crazy'}, '', '/');
-            window.location.href = '/crazy';
-        }
-    </script>
 </head>
-<body class="landing-body">
-    <h1>Sell Pep?</h1>
-    <div class="button-container">
-        <button class="landing-button" onclick="goToCrazy()">Yes</button>
-        <button class="landing-button" onclick="goToCrazy()">No</button>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>PEPE MARKET INTELLIGENCE SUITE</h1>
+                <div class="header-actions">
+                    <a href="https://xeggex.com?ref=6758af75f30d966822cad0c3" target="_blank" class="exchange-link">Trade on Xeggex</a>
+                    <button id="themeToggle" class="theme-toggle">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div class="content-area">
+                <select id="pepeSelect" class="select">
+                    <option value="">SELECT PEPE ASSET ▼</option>
+                    {% for pepe in pepes %}
+                        <option value="{{ pepe.id }}">{{ pepe.name }} ({{ pepe.symbol|upper }})</option>
+                    {% endfor %}
+                </select>
+
+                <div class="scrollable-content">
+                    <div id="pepeData">
+                        <!-- Data populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="calculator-widget">
+                <div class="calculator-outer">
+                    <div class="calculator-inner">
+                        <div class="calculator-content">
+                            <h2 class="calculator-title">
+                                <span>HOLDINGS</span>
+                                <span>CALCULATOR</span>
+                            </h2>
+                            
+                            <div class="calculator-form">
+                                <div class="form-group">
+                                    <label>NUMBER OF COINS:</label>
+                                    <div class="input-container">
+                                        <input type="number" id="coinAmount" placeholder="Enter amount" min="0">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="what-if-container">
+                                        <input type="checkbox" id="whatIfToggle">
+                                        <label for="whatIfToggle">WHAT IF PRICE IS...</label>
+                                    </div>
+                                    <div id="whatIfControls" class="price-controls" style="display: none">
+                                        <input type="range" id="priceSlider" class="price-slider">
+                                        <div class="price-input-container">
+                                            <span>$</span>
+                                            <input type="number" id="priceInput" step="any">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="value-display">
+                                    <span class="value-label">VALUE:</span>
+                                    <span class="value-amount" id="calculatedValue">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+    <script src="{{ url_for('static', filename='js/pepe-inspector.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
 </body>
 </html> 
