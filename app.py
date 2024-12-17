@@ -249,11 +249,18 @@ def add_security_headers(response):
 
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template('404.html'), 404
+    return jsonify({
+        'error': 'Not Found',
+        'message': 'The requested URL was not found on the server.'
+    }), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return render_template('500.html'), 500
+    db.session.rollback()  # Roll back db session in case of error
+    return jsonify({
+        'error': 'Internal Server Error',
+        'message': 'An internal server error occurred.'
+    }), 500
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
@@ -492,6 +499,12 @@ def category_view(slug):
 # Add this to create tables
 with app.app_context():
     db.create_all()
+
+# Also add a favicon route to prevent 404s
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                             'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 if __name__ == '__main__':
     if os.environ.get('FLASK_ENV') == 'production':
