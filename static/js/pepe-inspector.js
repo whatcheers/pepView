@@ -248,6 +248,15 @@ function displayPepeData(data) {
     `;
 
     document.getElementById('pepeData').innerHTML = content;
+    
+    // Setup calculator after new data is displayed
+    setupCalculator();
+    
+    // Trigger recalculation with existing amount
+    const coinAmount = document.getElementById('coinAmount');
+    if (coinAmount) {
+        coinAmount.dispatchEvent(new Event('input'));
+    }
 }
 
 function formatNumber(num) {
@@ -280,3 +289,89 @@ document.getElementById('pepeSelect').addEventListener('change', (e) => {
         document.getElementById('pepeData').innerHTML = '';
     }
 });
+
+function setupCalculator() {
+    const coinAmount = document.getElementById('coinAmount');
+    const calculatedValue = document.getElementById('calculatedValue');
+    const whatIfToggle = document.getElementById('whatIfToggle');
+    const whatIfControls = document.getElementById('whatIfControls');
+    const priceSlider = document.getElementById('priceSlider');
+    const priceInput = document.getElementById('priceInput');
+    
+    let currentPrice = 0;
+
+    function updateCalculation() {
+        const amount = parseFloat(coinAmount.value) || 0;
+        const price = whatIfToggle.checked ? 
+            (parseFloat(priceInput.value) || currentPrice) : 
+            currentPrice;
+        const value = amount * price;
+        calculatedValue.textContent = `$${value.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6
+        })}`;
+    }
+
+    function updateSliderRange() {
+        if (!currentPrice) return;
+        
+        const magnitude = Math.floor(Math.log10(currentPrice));
+        const step = Math.pow(10, magnitude - 1);
+        const max = currentPrice * 10;
+
+        priceSlider.min = 0;
+        priceSlider.max = max;
+        priceSlider.step = step;
+        priceSlider.value = currentPrice;
+        priceInput.value = currentPrice;
+        priceInput.step = step;
+    }
+
+    // Event listeners
+    coinAmount.addEventListener('input', updateCalculation);
+    
+    whatIfToggle.addEventListener('change', () => {
+        whatIfControls.style.display = whatIfToggle.checked ? 'block' : 'none';
+        updateCalculation();
+    });
+
+    priceSlider.addEventListener('input', (e) => {
+        priceInput.value = e.target.value;
+        updateCalculation();
+    });
+
+    priceInput.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        if (!isNaN(value)) {
+            priceSlider.value = value;
+            updateCalculation();
+        }
+    });
+
+    // Watch for price updates
+    const observer = new MutationObserver(() => {
+        currentPrice = getCurrentPrice();
+        updateSliderRange();
+        updateCalculation();
+    });
+
+    const priceElement = document.querySelector('.metric[title*="current market price"] .value');
+    if (priceElement) {
+        observer.observe(priceElement, { childList: true, characterData: true, subtree: true });
+        currentPrice = getCurrentPrice();
+        updateSliderRange();
+    }
+}
+
+function getCurrentPrice() {
+    const priceElement = document.querySelector('.metric[title*="current market price"] .value');
+    if (priceElement) {
+        const priceText = priceElement.textContent;
+        // Remove '$' and any commas, then parse
+        return parseFloat(priceText.replace(/[$,]/g, '')) || 0;
+    }
+    return 0;
+}
+
+// Initial setup
+setupCalculator();

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ category.name }} Pepe Coins</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='pepe-inspector.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>{{ category.name }} PEPE COINS</h1>
+                <button id="themeToggle" class="theme-toggle">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Category Overview</h2>
+            <div class="subsection">
+                <div class="metric">
+                    <span class="label">Description:</span>
+                    <span class="value">{{ category.description or 'No description available' }}</span>
+                </div>
+                <div class="metric">
+                    <span class="label">Number of Coins:</span>
+                    <span class="value">{{ coins|length }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Coins in this Category</h2>
+            <div class="subsection">
+                {% for coin in coins %}
+                <div class="metric">
+                    <span class="label">{{ coin.name }}</span>
+                    <span class="value">
+                        Market Cap: ${{ '{:,.2f}'.format(coin.market_cap) }}
+                        <a href="/pepe-inspector?coin={{ coin.id }}" class="inspect-link">Inspect</a>
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
+</body>
+</html> 

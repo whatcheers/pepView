@@ -92,6 +92,21 @@ class CoinData(db.Model):
             return cached.data
         return None
 
+class Category(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True)
+    slug = db.Column(db.String(100), unique=True)
+    description = db.Column(db.Text)
+
+class PepeCoinCategory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    pepe_coin_id = db.Column(db.String(100), db.ForeignKey('pepe_coin.id'))
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
+    
+    # Add relationships
+    pepe_coin = db.relationship('PepeCoin', backref='categories_link')
+    category = db.relationship('Category', backref='coins_link')
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -311,10 +326,58 @@ def save_pepe_data():
                     with open(image_path, 'wb') as f:
                         f.write(response.content)
                     
+        # Handle categories
+        if coin_data.get('categories'):
+            for cat_name in coin_data['categories']:
+                slug = cat_name.lower().replace(' ', '-')
+                category = Category.query.filter_by(slug=slug).first()
+                if not category:
+                    category = Category(name=cat_name, slug=slug)
+                    db.session.add(category)
+                
+                link = PepeCoinCategory.query.filter_by(
+                    pepe_coin_id=coin_id,
+                    category_id=category.id
+                ).first()
+                
+                if not link:
+                    link = PepeCoinCategory(pepe_coin_id=coin_id, category_id=category.id)
+                    db.session.add(link)
+        
+        db.session.commit()
+        
         return jsonify({'status': 'success'})
     except Exception as e:
         print(f"Error saving data: {e}")
         return jsonify({'error': str(e)}), 400
+
+@app.route('/category/<slug>')
+def category_view(slug):
+    try:
+        # Find category
+        category = Category.query.filter_by(slug=slug).first_or_404()
+        
+        # Get all coins in this category
+        coins = (PepeCoin.query
+                .join(PepeCoinCategory)
+                .join(Category)
+                .filter(Category.id == category.id)
+                .order_by(desc(PepeCoin.market_cap))
+                .all())
+        
+        coins_list = [{
+            'id': coin.id,
+            'name': coin.name,
+            'symbol': coin.symbol,
+            'market_cap': coin.market_cap
+        } for coin in coins]
+        
+        return render_template('category.html', 
+                             category=category, 
+                             coins=coins_list)
+    except Exception as e:
+        print(f"Error in category view: {e}")
+        return render_template('404.html'), 404
 
 # Add this to create tables
 with app.app_context():
