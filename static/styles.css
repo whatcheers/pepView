@@ -1,285 +1,322 @@
-/* Example global CSS for pepView */
+@import url('https://cdn.jsdelivr.net/npm/@docsearch/css@3');
+
+:root {
+    /* Light theme variables */
+    --bg-surface-light: #ffffff;
+    --bg-card-light: #f5f5f5;
+    --bg-hover-light: #e9ecef;
+    --text-primary-light: #1a1a1a;
+    --text-secondary-light: #6c757d;
+    
+    /* Dark theme variables */
+    --bg-surface-dark: #131722;
+    --bg-card-dark: #1e222d;
+    --bg-hover-dark: #2a2e39;
+    --text-primary-dark: #d1d4dc;
+    --text-secondary-dark: #787b86;
+    
+    /* Common variables */
+    --text-accent: #2962ff;
+    --grid-gap: 16px;
+    --card-padding: 16px;
+    --border-radius: 4px;
+    --up-color: #26a69a;
+    --down-color: #ef5350;
+    --volume-color: #2962ff;
+}
+
+/* Light theme */
+[data-theme='light'] {
+    --bg-surface: var(--bg-surface-light);
+    --bg-card: var(--bg-card-light);
+    --bg-hover: var(--bg-hover-light);
+    --text-primary: var(--text-primary-light);
+    --text-secondary: var(--text-secondary-light);
+}
+
+/* Dark theme */
+[data-theme='dark'] {
+    --bg-surface: var(--bg-surface-dark);
+    --bg-card: var(--bg-card-dark);
+    --bg-hover: var(--bg-hover-dark);
+    --text-primary: var(--text-primary-dark);
+    --text-secondary: var(--text-secondary-dark);
+}
+
+/* Base styles */
 body {
-    font-family: sans-serif;
+    background: var(--bg-surface);
+    color: var(--text-primary);
     margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+.header {
+    margin-bottom: 24px;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.exchange-link {
+    display: inline-block;
+    padding: 8px 16px;
+    background: var(--text-accent);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.exchange-link:hover {
+    background: #1a4cff;
+}
+
+/* Select dropdown */
+.select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 24px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--text-secondary);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+}
+
+/* Main content area */
+.main-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: var(--grid-gap);
+}
+
+.content-area {
+    flex: 1;
+}
+
+.scrollable-content {
+    overflow-y: auto;
+}
+
+/* Section styling */
+.section {
+    background: var(--bg-card);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--grid-gap);
+    padding: var(--card-padding);
+}
+
+.section h2 {
+    margin-top: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    margin-bottom: 16px;
+}
+
+.subsection {
+    margin-bottom: 16px;
+}
+
+/* Metrics styling */
+.metric {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    margin-bottom: 8px;
+    align-items: baseline;
+}
+
+.label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.value {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-align: right;
+}
+
+/* Calculator widget */
+.calculator-widget {
+    position: sticky;
+    top: 20px;
+    height: fit-content;
+    background: var(--bg-card);
+    border-radius: var(--border-radius);
+    padding: var(--card-padding);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+.calculator-outer {
+    background: transparent;
+}
+
+.calculator-inner {
     padding: 0;
 }
 
-/* Landing page styles */
-.landing-body {
-    background-color: #cccccc;
+.calculator-content {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
+    gap: 16px;
 }
 
-.button-container {
+.calculator-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
     display: flex;
-    gap: 20px;
+    flex-direction: column;
 }
 
-.landing-button {
-    padding: 15px 30px;
-    font-size: 1.2rem;
-    cursor: pointer;
-    border: none;
-    border-radius: 8px;
-    background-color: #333;
-    color: #fff;
-    transition: background-color 0.3s ease;
+.calculator-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.landing-button:hover {
-    background-color: #555;
+.what-if-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-/* Crazy page styles */
-.crazy-body {
-    overflow: hidden;
-    text-align: center;
-    color: #fff;
-    background: linear-gradient(-45deg, #ff00ff, #00ffff, #ffff00, #ff6600, #6633ff);
-    background-size: 600% 600%;
-    animation: gradient 12s ease infinite;
+.price-controls {
+    margin-top: 8px;
 }
 
-@keyframes gradient {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+.price-input-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
 }
 
-@keyframes rainbow {
-    0% { color: #ff0000; }
-    20% { color: #ff00ff; }
-    40% { color: #00ff00; }
-    60% { color: #ffff00; }
-    80% { color: #00ffff; }
-    100% { color: #ff0000; }
+.value-display {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-@keyframes bounce {
-    0%, 100% { transform: translateY(0) rotate(-5deg); }
-    50% { transform: translateY(-20px) rotate(5deg); }
+.value-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
 }
 
-@keyframes shake {
-    0%, 100% { transform: translateX(0) rotate(0); }
-    25% { transform: translateX(-10px) rotate(-5deg); }
-    75% { transform: translateX(10px) rotate(5deg); }
-}
-
-.crazy-title {
-    margin: 20px;
-    font-size: 4rem !important;
-    text-shadow: 
-        3px 3px 0 #000,
-        -3px 3px 0 #000,
-        -3px -3px 0 #000,
-        3px -3px 0 #000;
+.value-amount {
+    color: var(--text-primary);
+    font-size: 1.25rem;
     font-weight: bold;
-    animation: 
-        rainbow 3s linear infinite,
-        bounce 2s ease-in-out infinite,
-        shake 500ms ease-in-out infinite;
-    letter-spacing: 2px;
-    font-family: 'Impact', sans-serif;
-    -webkit-text-stroke: 2px black;
-    text-transform: uppercase;
+}
+
+/* Form elements */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.input-container {
     position: relative;
-    z-index: 1000;
 }
 
-.crazy-title::before {
-    content: '🚀';
-    position: absolute;
-    left: -50px;
-    animation: shake 1s ease-in-out infinite;
-}
-
-.crazy-title::after {
-    content: '🚀';
-    position: absolute;
-    right: -50px;
-    animation: shake 1s ease-in-out infinite reverse;
-}
-
-/* Add sparkles around the title */
-@keyframes sparkle {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.5); }
-}
-
-.sparkle {
-    position: absolute;
-    pointer-events: none;
-    animation: sparkle 1s ease-in-out infinite;
-    z-index: 999;
-}
-
-.image-container {
-    position: relative;
+input[type="number"] {
     width: 100%;
-    height: 80vh;
-    overflow: hidden;
+    padding: 8px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--text-secondary);
+    border-radius: var(--border-radius);
 }
 
-.floating-image {
-    position: absolute;
-    transition: all 2s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-    width: 150px;
+/* Value colors */
+.positive { color: var(--up-color); }
+.negative { color: var(--down-color); }
+.volume { color: var(--volume-color); }
+
+/* Loading state */
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-secondary);
 }
 
-/* Add these mobile-specific styles */
-
-/* Mobile-first base styles */
-:root {
-    --title-size-mobile: 2.5rem;
-    --title-size-desktop: 4rem;
+/* Error state */
+.error {
+    color: var(--down-color);
+    padding: 16px;
+    background: rgba(239, 83, 80, 0.1);
+    border-radius: var(--border-radius);
 }
 
-.crazy-title {
-    margin: 10px 5px;  /* Reduced margin for mobile */
-    font-size: var(--title-size-mobile) !important;
-    padding: 0 10px;
-    width: 90%;  /* Prevent horizontal overflow */
-    margin-left: auto;
-    margin-right: auto;
-    word-wrap: break-word;  /* Handle long text better */
-    hyphens: auto;
+/* Theme toggle button */
+.theme-toggle {
+    background: transparent;
+    border: 1px solid var(--text-secondary);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-/* Adjust rocket positions for mobile */
-.crazy-title::before {
-    left: -25px;  /* Closer to text on mobile */
-    font-size: 0.8em;
+.theme-toggle:hover {
+    background: var(--bg-hover);
 }
 
-.crazy-title::after {
-    right: -25px;
-    font-size: 0.8em;
+.theme-icon {
+    font-size: 1.2em;
 }
 
-/* Adjust image sizes for mobile */
-.floating-image {
-    width: 100px;  /* Smaller on mobile */
-    max-width: 30vw;  /* Responsive size */
+/* Coin styling */
+.coin-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
 }
 
-/* Adjust sparkles for mobile */
-.sparkle {
-    font-size: 12px !important;  /* Smaller sparkles on mobile */
+.coin-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg-surface);
+    border: 2px solid var(--text-accent);
 }
 
-/* Audio button mobile optimization */
-.audio-button {
-    bottom: 10px !important;
-    right: 10px !important;
-    padding: 8px 16px !important;
-    font-size: 14px !important;
-    z-index: 2000 !important;  /* Ensure it's always clickable */
-}
-
-/* Media queries for larger screens */
-@media (min-width: 768px) {
-    .crazy-title {
-        font-size: var(--title-size-desktop) !important;
-    }
-
-    .crazy-title::before {
-        left: -50px;
-    }
-
-    .crazy-title::after {
-        right: -50px;
-    }
-
-    .floating-image {
-        width: 150px;
-    }
-
-    .sparkle {
-        font-size: 16px !important;
-    }
-}
-
-/* Prevent overflow issues */
-.crazy-body {
-    overflow-x: hidden;
-    width: 100vw;
-    min-height: 100vh;
-    position: relative;
-}
-
-/* Touch-friendly button styles */
-.landing-button {
-    min-width: 100px;
-    min-height: 44px;  /* Minimum touch target size */
-    margin: 5px;
-    padding: 15px 25px;
-}
-
-.buy-button {
-    display: inline-block;
-    padding: 15px 30px;
-    background: linear-gradient(45deg, #ff00ff, #00ffff);
-    color: white;
-    text-decoration: none;
-    border-radius: 25px;
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin: 20px;
-    position: relative;
-    z-index: 1000;
-    text-shadow: 2px 2px 0 #000;
-    box-shadow: 0 0 20px rgba(255,255,255,0.5);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-}
-
-/* Mobile optimization for the buy button */
+/* Responsive design */
 @media (max-width: 768px) {
-    .buy-button {
-        font-size: 1.2rem;
-        padding: 12px 24px;
-        margin: 10px;
+    .main-layout {
+        grid-template-columns: 1fr;
     }
-}
-
-.inspector-button {
-    display: inline-block;
-    padding: 15px 30px;
-    background: #000;
-    border: 2px solid #00ff00;
-    color: white;
-    text-decoration: none;
-    border-radius: 25px;
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin: 20px;
-    position: relative;
-    z-index: 1000;
-    text-shadow: 0 0 10px #00ff00;
-    box-shadow: 0 0 20px rgba(255,255,255,0.5);
-    animation: terminalPulse 2s infinite;
-    font-family: monospace;
-}
-
-@keyframes terminalPulse {
-    0% { box-shadow: 0 0 5px #00ff00; }
-    50% { box-shadow: 0 0 20px #00ff00; }
-    100% { box-shadow: 0 0 5px #00ff00; }
-}
-
-.inspector-button:hover {
-    background: #001100;
-    color: #00ff00;
-    border-color: #00ff00;
+    
+    .calculator-widget {
+        position: static;
+        margin-top: var(--grid-gap);
+    }
 }
