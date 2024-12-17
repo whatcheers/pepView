@@ -25,7 +25,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=[]  # Remove default limits
 )
 
 # Add proper MIME type for MP3
@@ -267,34 +267,81 @@ def pepe_inspector():
         print(f"Error in pepe_inspector: {e}")
         return render_template('pepe-inspector.html', pepes=[])
 
+def is_local_request():
+    """Check if the request is coming from localhost"""
+    return request.remote_addr in ['127.0.0.1', 'localhost', '::1']
+
+def get_coingecko_rate_limit():
+    """Get the appropriate rate limit for CoinGecko API"""
+    if is_local_request():
+        return "100 per minute"  # Higher limit for local development
+    return "50 per minute"  # Normal limit for production
+
 @app.route('/api/pepe-info/<coin_id>')
-@limiter.limit("30 per minute")
 def get_pepe_info(coin_id):
     try:
-        # Check cache first
+        # Skip rate limiting for local requests
+        if is_local_request():
+            limiter.exempt = True
+
+        # Sanitize coin_id
+        coin_id = coin_id.lower().strip()
+        
+        # Check if local JSON file exists first
+        json_path = os.path.join('static', 'data', 'coins', f'{coin_id}.json')
+        if os.path.exists(json_path):
+            with open(json_path, 'r') as f:
+                return jsonify(json.load(f))
+
+        # Check cache next
         cached_data = CoinData.get_cached(coin_id)
         if cached_data:
             return jsonify(cached_data)
         
         # If no cache, fetch from API
-        response = requests.get(f'https://api.coingecko.com/api/v3/coins/{coin_id}')
-        response.raise_for_status()
-        data = response.json()
-        
-        # Cache the response
-        coin_data = CoinData(
-            coin_id=coin_id,
-            data=data,
-            last_updated=datetime.utcnow()
-        )
-        db.session.add(coin_data)
-        db.session.commit()
-        
-        return jsonify(data)
+        try:
+            # Apply rate limit only for CoinGecko API calls
+            if not limiter.exempt:
+                rate_limit = get_coingecko_rate_limit()
+                limiter.limit(rate_limit)(lambda: None)()
+            
+            response = requests.get(
+                f'https://api.coingecko.com/api/v3/coins/{coin_id}',
+                timeout=5  # Add timeout
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            # Cache the response
+            coin_data = CoinData(
+                coin_id=coin_id,
+                data=data,
+                last_updated=datetime.utcnow()
+            )
+            db.session.add(coin_data)
+            db.session.commit()
+            
+            # Also save to local JSON file
+            os.makedirs(os.path.dirname(json_path), exist_ok=True)
+            with open(json_path, 'w') as f:
+                json.dump(data, f, indent=2)
+            
+            return jsonify(data)
+            
+        except requests.exceptions.RequestException as e:
+            print(f"API request failed for {coin_id}: {str(e)}")
+            return jsonify({
+                'error': 'Failed to fetch data from API',
+                'details': str(e)
+            }), 503  # Service Unavailable
+            
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in get_pepe_info for {coin_id}: {str(e)}")
+        return jsonify({
+            'error': 'Internal server error',
+            'details': str(e)
+        }), 500
 
-@csrf.exempt  # If you want to exempt this API endpoint from CSRF
 @app.route('/api/save-pepe-data', methods=['POST'])
 def save_pepe_data():
     try:
