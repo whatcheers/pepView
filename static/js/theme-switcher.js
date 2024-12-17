@@ -20,4 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateThemeIcon(theme) {
         themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
     }
+    
+    // Add number formatting
+    const formatNumbers = () => {
+        document.querySelectorAll('.value').forEach(el => {
+            if (el.textContent.includes('$')) {
+                el.setAttribute('data-numeric', 'true');
+            }
+        });
+    };
+    
+    formatNumbers();
 }); 
