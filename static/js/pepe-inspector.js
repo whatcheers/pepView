@@ -290,14 +290,52 @@ document.getElementById('pepeSelect').addEventListener('change', (e) => {
     }
 });
 
+function updateSliderRange() {
+    const price = getCurrentPrice();
+    if (!price) return;
+
+    // Calculate relative range based on price magnitude
+    let range;
+    if (price >= 1) {
+        // For prices $1 and up, use ±10%
+        range = price * 0.1;
+    } else {
+        // For smaller prices, find the first significant digit and use that for scale
+        const magnitude = Math.floor(Math.log10(price));
+        range = Math.pow(10, magnitude) * 2;
+    }
+
+    const min = Math.max(0, price - range);
+    const max = price + range;
+    const step = range / 100; // 100 steps across the range
+
+    priceSlider.min = min;
+    priceSlider.max = max;
+    priceSlider.step = step;
+    priceSlider.value = price;
+    priceInput.value = price;
+
+    // Update the slider's aria label for accessibility
+    priceSlider.setAttribute('aria-label', `Price range from $${min.toFixed(8)} to $${max.toFixed(8)}`);
+}
+
+function getCurrentPrice() {
+    const priceElement = document.querySelector('.metric[title*="current market price"] .value');
+    if (priceElement) {
+        const priceText = priceElement.textContent;
+        // Remove '$' and any commas, then parse
+        return parseFloat(priceText.replace(/[$,]/g, '')) || 0;
+    }
+    return 0;
+}
+
 function setupCalculator() {
-    const coinAmount = document.getElementById('coinAmount');
-    const calculatedValue = document.getElementById('calculatedValue');
     const whatIfToggle = document.getElementById('whatIfToggle');
     const whatIfControls = document.getElementById('whatIfControls');
     const priceSlider = document.getElementById('priceSlider');
     const priceInput = document.getElementById('priceInput');
-    
+    const coinAmount = document.getElementById('coinAmount');
+    const calculatedValue = document.getElementById('calculatedValue');
     let currentPrice = 0;
 
     function updateCalculation() {
@@ -305,38 +343,24 @@ function setupCalculator() {
         const price = whatIfToggle.checked ? 
             (parseFloat(priceInput.value) || currentPrice) : 
             currentPrice;
+        
         const value = amount * price;
         calculatedValue.textContent = `$${value.toLocaleString('en-US', {
             minimumFractionDigits: 2,
-            maximumFractionDigits: 6
+            maximumFractionDigits: 8
         })}`;
     }
 
-    function updateSliderRange() {
-        if (!currentPrice) return;
-        
-        const magnitude = Math.floor(Math.log10(currentPrice));
-        const step = Math.pow(10, magnitude - 1);
-        const max = currentPrice * 10;
-
-        priceSlider.min = 0;
-        priceSlider.max = max;
-        priceSlider.step = step;
-        priceSlider.value = currentPrice;
-        priceInput.value = currentPrice;
-        priceInput.step = step;
-    }
-
-    // Event listeners
-    coinAmount.addEventListener('input', updateCalculation);
-    
     whatIfToggle.addEventListener('change', () => {
         whatIfControls.style.display = whatIfToggle.checked ? 'block' : 'none';
+        document.body.classList.toggle('dream-mode', whatIfToggle.checked);
         updateCalculation();
     });
 
+    coinAmount.addEventListener('input', updateCalculation);
+
     priceSlider.addEventListener('input', (e) => {
-        priceInput.value = e.target.value;
+        priceInput.value = parseFloat(e.target.value).toFixed(8);
         updateCalculation();
     });
 
@@ -361,16 +385,6 @@ function setupCalculator() {
         currentPrice = getCurrentPrice();
         updateSliderRange();
     }
-}
-
-function getCurrentPrice() {
-    const priceElement = document.querySelector('.metric[title*="current market price"] .value');
-    if (priceElement) {
-        const priceText = priceElement.textContent;
-        // Remove '$' and any commas, then parse
-        return parseFloat(priceText.replace(/[$,]/g, '')) || 0;
-    }
-    return 0;
 }
 
 // Initial setup
